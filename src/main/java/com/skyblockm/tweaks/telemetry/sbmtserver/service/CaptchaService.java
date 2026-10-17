@@ -79,6 +79,25 @@ public class CaptchaService {
     }
 
     /**
+     * Принимает пачку капч (до 9 штук), обрабатывает каждую и сохраняет уникальные/сложные.
+     *
+     * @return количество сохраненных капч.
+     */
+    @Transactional
+    public int processAndSaveCaptchas(List<CaptchaUploadDto> dtoList) {
+        if (dtoList == null || dtoList.isEmpty()) {
+            return 0;
+        }
+        int savedCount = 0;
+        for (CaptchaUploadDto dto : dtoList) {
+            if (processAndSaveCaptcha(dto)) {
+                savedCount++;
+            }
+        }
+        return savedCount;
+    }
+
+    /**
      * Получить картинку по ID (например, для просмотра или скачивания).
      */
     @Transactional(readOnly = true)
