@@ -1,0 +1,159 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test-and-build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run Unit & Integration Tests
+        run: ./gradlew test --no-daemon
+
+      - name: Build Boot WAR
+        run: ./gradlew bootWar -x test --no-daemon
+
+      - name: Upload Test Report Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: build/reports/tests/test/
+          retention-days: 7
+
+      - name: Upload Application Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbmt-server-war
+          path: build/libs/*.war
+          retention-days: 14
+
+  docker-verify:
+    name: Docker Build & Smoke Test
+    needs: test-and-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare .env for Docker Compose
+        run: cp .env.example .env
+
+      - name: Build and Start Containers
+        run: docker compose up -d --build
+
+      - name: Wait for App to be Ready
+        run: |
+          echo "Waiting for app to start..."
+          for i in {1..30}; do
+            if curl -s -f http://localhost:8080/actuator/health > /dev/null 2>&1; then
+              echo "App is healthy!"
+              break
+            fi
+            echo "Waiting ($i/30)..."
+            sleep 3
+          done
+
+      - name: Verify Dashboard and API
+        run: |
+          # 1. Root / must redirect to /dashboard (HTTP 302)
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/)
+          if [ "$HTTP_STATUS" != "302" ]; then
+            echo "Expected 302 redirect for root, got $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Root / correctly redirects to /dashboard"
+
+          # 2. /dashboard must return 200 OK without authentication
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/dashboard)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Expected 200 for /dashboard, got $HTTP_STATUS"
+            exit 1
+          fi
+          echo "/dashboard correctly returned 200 OK"
+
+          # 3. /dashboard/api/stats must return 200 OK
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/dashboard/api/stats)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Expected 200 for /dashboard/api/stats, got $HTTP_STATUS"
+            exit 1
+          fi
+          echo "/dashboard/api/stats correctly returned 200 OK"
+
+      - name: Dump Logs on Failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Teardown Containers
+        if: always()
+        run: docker compose down -v
+
+  docker-publish:
+    name: Publish to GitHub Container Registry (GHCR)
+    needs: [test-and-build, docker-verify]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
