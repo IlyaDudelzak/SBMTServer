@@ -8,5 +8,9 @@ public record StatsResponseDto(
         long hardCasesCount,
         Map<String, Long> telemetryByModVersion,
         Map<String, Long> telemetryByEventType,
-        Map<String, Long> captchasByClass
+        Map<String, Long> captchasByClass,
+        String latestModVersion,
+        String latestReleaseUrl,
+        String nightlyModVersion,
+        String nightlyReleaseUrl
 ) {}

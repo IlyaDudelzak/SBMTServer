@@ -202,9 +202,14 @@ public class DashboardController {
             <div class="stat-sub">Confidence < 0.85 или UNKNOWN</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Топ версия мода</div>
-            <div class="stat-value" style="color: #8b5cf6;" id="statTopMod">...</div>
-            <div class="stat-sub">Основная клиентская сборка</div>
+            <div class="stat-label">Релиз (Stable)</div>
+            <div class="stat-value" style="color: #8b5cf6;" id="statLatestMod">...</div>
+            <div class="stat-sub"><a id="statReleaseLink" href="https://github.com/IlyaDudelzak/SkyBlockM-Tweaks-plus/releases/latest" target="_blank" style="color: var(--accent); text-decoration: none;">GitHub Release ↗</a></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Nightly (Dev)</div>
+            <div class="stat-value" style="color: #ec4899;" id="statNightlyMod">...</div>
+            <div class="stat-sub"><a id="statNightlyLink" href="https://github.com/IlyaDudelzak/SkyBlockM-Tweaks-plus/releases/tag/nightly" target="_blank" style="color: #ec4899; text-decoration: none;">Nightly Release ↗</a></div>
         </div>
     </div>
 
@@ -334,8 +339,19 @@ public class DashboardController {
             document.getElementById('statCaptchas').innerText = data.totalCaptchas.toLocaleString();
             document.getElementById('statHardCases').innerText = data.hardCasesCount.toLocaleString();
 
-            const topMod = Object.keys(data.telemetryByModVersion || {})[0] || '—';
-            document.getElementById('statTopMod').innerText = topMod;
+            const latestMod = data.latestModVersion || Object.keys(data.telemetryByModVersion || {})[0] || '—';
+            document.getElementById('statLatestMod').innerText = latestMod;
+            if (data.latestReleaseUrl) {
+                const link = document.getElementById('statReleaseLink');
+                if (link) link.href = data.latestReleaseUrl;
+            }
+
+            const nightlyMod = data.nightlyModVersion || '—';
+            document.getElementById('statNightlyMod').innerText = nightlyMod;
+            if (data.nightlyReleaseUrl) {
+                const nLink = document.getElementById('statNightlyLink');
+                if (nLink) nLink.href = data.nightlyReleaseUrl;
+            }
 
             renderBars('analyticsModVersions', data.telemetryByModVersion, data.totalTelemetryEvents);
             renderBars('analyticsEventTypes', data.telemetryByEventType, data.totalTelemetryEvents);

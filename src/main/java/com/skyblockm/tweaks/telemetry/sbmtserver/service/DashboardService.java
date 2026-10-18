@@ -29,6 +29,7 @@ public class DashboardService {
 
     private final TelemetryRepository telemetryRepository;
     private final CaptchaRepository captchaRepository;
+    private final ModReleaseService modReleaseService;
 
     private static final float LOW_CONFIDENCE_THRESHOLD = 0.85f;
 
@@ -98,13 +99,19 @@ public class DashboardService {
             }
         }
 
+        ModReleaseService.ModVersionsInfo versions = modReleaseService.getVersions();
+
         return new StatsResponseDto(
                 totalTelemetry,
                 totalCaptchas,
                 hardCases,
                 byModVersion,
                 byEventType,
-                byCaptchaClass
+                byCaptchaClass,
+                versions.stable() != null ? versions.stable().version() : "—",
+                versions.stable() != null ? versions.stable().releaseUrl() : "",
+                versions.nightly() != null ? versions.nightly().version() : "—",
+                versions.nightly() != null ? versions.nightly().releaseUrl() : ""
         );
     }
 
