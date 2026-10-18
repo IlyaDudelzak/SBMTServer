@@ -14,6 +14,7 @@ public class TelemetryService {
 
     public void recordEvent(TelemetryRequestDto dto) {
         TelemetryEvent event = TelemetryEvent.builder()
+                .username(dto.username())
                 .modVersion(dto.modVersion())
                 .mcVersion(dto.mcVersion())
                 .eventType(dto.eventType())

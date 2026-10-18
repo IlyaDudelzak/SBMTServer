@@ -266,6 +266,7 @@ public class DashboardController {
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Игрок</th>
                         <th>Версия мода</th>
                         <th>MC Версия</th>
                         <th>Тип события</th>
@@ -274,7 +275,7 @@ public class DashboardController {
                     </tr>
                 </thead>
                 <tbody id="telemetryTableBody">
-                    <tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Загрузка...</td></tr>
+                    <tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Загрузка...</td></tr>
                 </tbody>
             </table>
             <div class="pagination">
@@ -430,7 +431,7 @@ public class DashboardController {
     async function loadTelemetry(page = 0) {
         telemetryPage = page;
         const tbody = document.getElementById('telemetryTableBody');
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Загрузка...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Загрузка...</td></tr>';
 
         try {
             const res = await fetch(`/dashboard/api/telemetry?page=${page}&size=20`);
@@ -441,15 +442,17 @@ public class DashboardController {
             document.getElementById('telemetryNextBtn').disabled = data.last;
 
             if (!data.content || data.content.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Событий нет</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Событий нет</td></tr>';
                 return;
             }
 
             tbody.innerHTML = data.content.map(t => {
                 const escapedPayload = t.rawPayload ? t.rawPayload.replace(/"/g, '&quot;') : '';
+                const userDisplay = t.username ? `<span style="font-weight:600;color:var(--text-main);">${t.username}</span>` : '<span style="color:var(--text-muted)">—</span>';
                 return `
                     <tr>
                         <td>#${t.id}</td>
+                        <td>${userDisplay}</td>
                         <td><span class="badge badge-chest">${t.modVersion}</span></td>
                         <td>${t.mcVersion}</td>
                         <td><span style="font-weight:600;">${t.eventType}</span></td>
@@ -461,7 +464,7 @@ public class DashboardController {
                 `;
             }).join('');
         } catch (e) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--danger);">Ошибка загрузки телеметрии</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--danger);">Ошибка загрузки телеметрии</td></tr>';
         }
     }
 

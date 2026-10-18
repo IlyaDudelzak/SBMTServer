@@ -5,6 +5,9 @@ import jakarta.validation.constraints.Size;
 import java.util.Map;
 
 public record TelemetryRequestDto(
+        @Size(max = 64)
+        String username,
+
         @NotBlank(message = "Mod version is required")
         @Size(max = 32)
         String modVersion,

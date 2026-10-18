@@ -15,6 +15,9 @@ public class TelemetryEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(length = 64)
+    private String username;
+
     @Column(nullable = false, length = 32)
     private String modVersion;
 
