@@ -77,9 +77,7 @@ services:
     image: postgres:17-alpine
     container_name: sbmt-postgres
     restart: unless-stopped
-    ports:
-      # Доступен ТОЛЬКО локально на сервере (закрыт от внешнего интернета и сканеров хостинга)
-      - "127.0.0.1:5432:5432"
+    # Порт наружу не публикуем: app общается с базой внутри изолированной сети Docker
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-sbmt}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
